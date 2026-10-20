@@ -9,3 +9,4 @@ __pycache__/
 chroma_db/
 chroma_db_backup*/
 .DS_Store
+chat_history.sqlite3
