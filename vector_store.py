@@ -1,6 +1,7 @@
 
 from pathlib import Path
 import hashlib
+import streamlit as st
 
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -12,28 +13,32 @@ COLLECTION_NAME = "multi_document_rag"
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 
+@st.cache_resource
 def get_embedding_model():
-    """Load the local embedding model."""
+    """Load and cache the embedding model."""
     return HuggingFaceEmbeddings(
         model_name=EMBEDDING_MODEL
     )
 
 
-def load_vector_store():
-    """Open the existing vector database."""
+def load_vector_store(collection_name: str = COLLECTION_NAME):
+    """Open a specific user's vector collection."""
     if not Path(DB_DIRECTORY).exists():
         raise FileNotFoundError(
-            "Database not found. Add documents first."
+            "Database not found. Upload documents first."
         )
 
     return Chroma(
         persist_directory=DB_DIRECTORY,
         embedding_function=get_embedding_model(),
-        collection_name=COLLECTION_NAME,
+        collection_name=collection_name,
     )
 
 
-def create_vector_store(chunks: list[dict]):
+def create_vector_store(
+    chunks: list[dict],
+    collection_name: str = COLLECTION_NAME,
+):
     """Replace old chunks for uploaded sources and preserve other sources."""
     if not chunks:
         raise ValueError("No text chunks were provided.")
@@ -41,7 +46,7 @@ def create_vector_store(chunks: list[dict]):
     embeddings = get_embedding_model()
 
     vector_store = Chroma(
-        collection_name=COLLECTION_NAME,
+        collection_name=collection_name,
         embedding_function=embeddings,
         persist_directory=DB_DIRECTORY,
     )

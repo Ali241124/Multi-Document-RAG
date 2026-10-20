@@ -9,13 +9,16 @@ from vector_store import load_vector_store
 MODEL_NAME = "qwen2.5:7b"
 
 
-def detect_source(question: str) -> str | None:
+def detect_source(
+    question: str,
+    collection_name: str = "multi_document_rag",
+) -> str | None:
     """
     Detect an indexed filename mentioned in the question.
     Return None if no filename is mentioned.
     """
 
-    vector_store = load_vector_store()
+    vector_store = load_vector_store(collection_name)
 
     results = vector_store._collection.get(
         include=["metadatas"]
@@ -36,7 +39,11 @@ def detect_source(question: str) -> str | None:
     return None
 
 
-def answer_question(question: str) -> dict:
+def answer_question(
+    question: str,
+    source_override: str | None = None,
+    collection_name: str = "multi_document_rag",
+) -> dict:
     """
     Answer using relevant document context.
     If a filename is mentioned, search only that file.
@@ -45,13 +52,17 @@ def answer_question(question: str) -> dict:
     if not question.strip():
         raise ValueError("Question cannot be empty.")
 
-    source = detect_source(question)
+    source = source_override or detect_source(
+    question,
+    collection_name,
+)
 
     chunks = retrieve_documents(
-        question=question,
-        k=4,
-        source=source,
-    )
+    question=question,
+    k=4,
+    source=source,
+    collection_name=collection_name,
+)
 
     if not chunks:
         return {
@@ -107,14 +118,14 @@ User question:
     response = llm.invoke(prompt)
 
     sources = [
-        {
-            "source": chunk["source"],
-            "page": chunk["page"],
-            "chunk_id": chunk["chunk_id"],
-        }
-        for chunk in chunks
-    ]
-
+    {
+        "source": chunk["source"],
+        "page": chunk["page"],
+        "chunk_id": chunk["chunk_id"],
+        "text": chunk["text"],
+    }
+    for chunk in chunks
+]
     return {
         "answer": response.content,
         "sources": sources,
